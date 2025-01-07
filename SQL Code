@@ -1,0 +1,141 @@
+-- Netflix Content Analysis Project
+
+-- **1. Drop and Recreate Netflix Table**
+DROP TABLE IF EXISTS netflix;
+
+CREATE TABLE netflix (
+	show_id VARCHAR(10),	
+	type VARCHAR(10),
+	title VARCHAR(150),
+	director VARCHAR(210),	
+	casts VARCHAR(775),
+	country VARCHAR(150),
+	date_added VARCHAR(50),
+	release_year VARCHAR(10),	
+	rating VARCHAR(10),
+	duration VARCHAR(15),
+	listed_in VARCHAR(150),	
+	description VARCHAR(250)
+);
+
+-- **2. Fetch All Records**
+SELECT *
+FROM netflix;
+
+-- **3. Total Content Count**
+SELECT COUNT(*) AS total_content
+FROM netflix;
+
+-- **4. Distinct Types of Content**
+SELECT DISTINCT type 
+FROM netflix;
+
+-- **Business Problems**
+
+-- **1. Count of Movies vs TV Shows**
+SELECT DISTINCT type, COUNT(*) AS total_count
+FROM netflix 
+GROUP BY type;
+
+-- **2. Most Common Rating for Movies and TV Shows**
+SELECT type, rating
+FROM (
+	SELECT type, rating, COUNT(*) AS count, 
+		RANK() OVER (PARTITION BY type ORDER BY COUNT(*) DESC) AS ranking
+	FROM netflix 
+	GROUP BY type, rating
+) AS t1
+WHERE ranking = 1;
+
+-- **3. Movies Released in 2020**
+SELECT title 
+FROM netflix
+WHERE type = 'Movie' AND release_year = '2020';
+
+-- **4. Top 5 Countries with Most Content on Netflix**
+WITH CTE_countries AS (
+	SELECT country, COUNT(*) AS total, 
+		DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS rank
+	FROM netflix
+	WHERE country IS NOT NULL
+	GROUP BY country
+) 
+SELECT country 
+FROM CTE_countries
+WHERE rank <= 5;
+
+-- **5. Longest Movie**
+SELECT title
+FROM netflix
+WHERE type = 'Movie'
+AND duration = (SELECT MAX(duration) FROM netflix);
+
+-- **6. Content Added in Last 5 Years**
+SELECT *
+FROM netflix
+WHERE TO_DATE(date_added, 'Month DD, YYYY') >= (CURRENT_DATE - INTERVAL '5 years');
+
+-- **7. Movies/TV Shows by Director 'Rajiv Chilaka'**
+SELECT title
+FROM netflix
+WHERE director LIKE '%Rajiv Chilaka%';
+
+-- **8. TV Shows with More Than 5 Seasons**
+SELECT *
+FROM netflix
+WHERE type = 'TV Show' 
+AND SPLIT_PART(duration, ' ', 1)::NUMERIC > 5;
+
+-- **9. Content Count by Genre**
+SELECT UNNEST(STRING_TO_ARRAY(listed_in, ',')) AS genre, COUNT(*)
+FROM netflix
+GROUP BY genre
+ORDER BY COUNT(*) DESC;
+
+-- **10. Top 5 Years with Highest Average Content Released in India**
+SELECT release_year, COUNT(*) AS avg_num
+FROM netflix
+WHERE country = 'India'
+GROUP BY release_year 
+ORDER BY avg_num DESC
+LIMIT 5;
+
+-- **11. Movies That Are Documentaries**
+SELECT DISTINCT title, genre
+FROM (
+	SELECT *, UNNEST(STRING_TO_ARRAY(listed_in, ',')) AS genre 
+	FROM netflix
+) AS genres
+WHERE genre = 'Documentaries';
+
+-- **12. Content Without a Director**
+SELECT *
+FROM netflix
+WHERE director IS NULL;
+
+-- **13. Movies with Salman Khan in the Last 10 Years**
+SELECT *
+FROM netflix
+WHERE casts ILIKE '%Salman Khan%'
+AND CAST(release_year AS INTEGER) > EXTRACT(YEAR FROM CURRENT_DATE) - 10;
+
+-- **14. Top 10 Actors in Indian Movies**
+SELECT UNNEST(STRING_TO_ARRAY(casts, ',')) AS actors, COUNT(*) AS total_content
+FROM netflix
+WHERE country = 'India'
+GROUP BY actors
+ORDER BY total_content DESC
+LIMIT 10;
+
+-- **15. Categorize Content by Keywords**
+WITH cte_content AS (
+	SELECT *,
+		CASE 
+			WHEN description ILIKE '%kill%' OR description ILIKE '%violence%' THEN 'Bad_content'
+			ELSE 'Good_content' 
+		END AS category
+	FROM netflix
+) 
+SELECT category, COUNT(*) AS total_items
+FROM cte_content
+GROUP BY category;
