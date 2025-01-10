@@ -1,4 +1,5 @@
 # Netflix Content Analysis Project
+![netflix-1](https://github.com/user-attachments/assets/a76935fc-721c-4d2b-986a-862effe594b7)
 
 ## Overview
 The **Netflix Content Analysis Project** provides insights into Netflix's content catalog by utilizing SQL queries. The project demonstrates how to create a structured database, analyze the dataset, and address various business problems related to Netflix content. This repository includes the SQL scripts used to create, manage, and query the `netflix` table.
@@ -33,58 +34,192 @@ The `netflix` table includes the following columns:
 The project addresses various business questions through SQL queries:
 
 ### General Queries
-1. **Drop and Recreate the Netflix Table**: Ensures a clean start by dropping and recreating the `netflix` table.
-2. **Fetch All Records**: Displays all the records in the table.
-3. **Total Content Count**: Retrieves the total number of records in the `netflix` table.
-4. **Distinct Types of Content**: Identifies unique content types.
+1. **Drop and Recreate the Netflix Table**
+   ```sql
+   DROP TABLE IF EXISTS netflix;
+   CREATE TABLE netflix (
+	   show_id VARCHAR(10),
+	   type VARCHAR(10),
+	   title VARCHAR(150),
+	   director VARCHAR(210),
+	   casts VARCHAR(775),
+	   country VARCHAR(150),
+	   date_added VARCHAR(50),
+	   release_year VARCHAR(10),
+	   rating VARCHAR(10),
+	   duration VARCHAR(15),
+	   listed_in VARCHAR(150),
+	   description VARCHAR(250)
+   );
+   ```
+
+2. **Fetch All Records**
+   ```sql
+   SELECT * FROM netflix;
+   ```
+
+3. **Total Content Count**
+   ```sql
+   SELECT COUNT(*) AS total_content FROM netflix;
+   ```
+
+4. **Distinct Types of Content**
+   ```sql
+   SELECT DISTINCT type FROM netflix;
+   ```
 
 ### Business Problems
-1. **Count of Movies vs TV Shows**: Calculates the count of Movies and TV Shows.
-2. **Most Common Rating for Movies and TV Shows**: Determines the most frequent rating for each type of content.
-3. **Movies Released in 2020**: Lists movies released in the year 2020.
-4. **Top 5 Countries with Most Content**: Identifies the top five countries producing the most content.
-5. **Longest Movie**: Finds the longest movie based on duration.
-6. **Content Added in Last 5 Years**: Displays content added to Netflix within the last 5 years.
-7. **Movies/TV Shows by Rajiv Chilaka**: Fetches content directed by Rajiv Chilaka.
-8. **TV Shows with More Than 5 Seasons**: Lists TV Shows with more than five seasons.
-9. **Content Count by Genre**: Counts the content categorized by genre.
-10. **Top 5 Years with Highest Average Content Released in India**: Identifies years with the highest average content release in India.
-11. **Movies That Are Documentaries**: Extracts movies categorized as documentaries.
-12. **Content Without a Director**: Displays content where no director is listed.
-13. **Movies with Salman Khan in the Last 10 Years**: Lists movies featuring Salman Khan released in the last 10 years.
-14. **Top 10 Actors in Indian Movies**: Identifies the top 10 actors featured in Indian movies.
-15. **Categorize Content by Keywords**: Categorizes content based on specific keywords in descriptions (e.g., `kill`, `violence`).
-
-## Usage
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/netflix-content-analysis.git
+1. **Count of Movies vs TV Shows**
+   ```sql
+   SELECT DISTINCT type, COUNT(*) AS total_count
+   FROM netflix
+   GROUP BY type;
    ```
-2. Set up a database environment (e.g., PostgreSQL).
-3. Execute the SQL scripts in order.
-4. Analyze the outputs to answer the business questions.
 
-## Prerequisites
-- Database Management System (PostgreSQL preferred)
-- Basic knowledge of SQL
+2. **Most Common Rating for Movies and TV Shows**
+   ```sql
+   SELECT type, rating
+   FROM (
+	   SELECT type, rating, COUNT(*) AS count, 
+	          RANK() OVER (PARTITION BY type ORDER BY COUNT(*) DESC) AS ranking
+	   FROM netflix 
+	   GROUP BY type, rating
+   ) AS t1
+   WHERE ranking = 1;
+   ```
 
-## Project Objectives
-This project aims to:
-1. Demonstrate proficiency in SQL for data analysis.
-2. Address real-world business problems using structured data.
-3. Provide insights into Netflix's content catalog.
+3. **Movies Released in 2020**
+   ```sql
+   SELECT title 
+   FROM netflix
+   WHERE type = 'Movie' AND release_year = '2020';
+   ```
 
-## Contributions
-Contributions are welcome! Feel free to fork this repository and submit a pull request with enhancements or additional queries.
+4. **Top 5 Countries with Most Content on Netflix**
+   ```sql
+   WITH CTE_countries AS (
+	   SELECT country, COUNT(*) AS total, 
+	          DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS rank
+	   FROM netflix
+	   WHERE country IS NOT NULL
+	   GROUP BY country
+   ) 
+   SELECT country 
+   FROM CTE_countries
+   WHERE rank <= 5;
+   ```
 
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+5. **Longest Movie**
+   ```sql
+   SELECT title
+   FROM netflix
+   WHERE type = 'Movie'
+   AND duration = (SELECT MAX(duration) FROM netflix);
+   ```
 
-## Contact
-For questions or feedback, please contact:
-- **Your Name**: [your-email@example.com](mailto:your-email@example.com)
-- **GitHub**: [https://github.com/your-username](https://github.com/your-username)
+6. **Content Added in Last 5 Years**
+   ```sql
+   SELECT *
+   FROM netflix
+   WHERE TO_DATE(date_added, 'Month DD, YYYY') >= (CURRENT_DATE - INTERVAL '5 years');
+   ```
 
----
-Thank you for exploring the Netflix Content Analysis Project!
+7. **Movies/TV Shows by Director 'Rajiv Chilaka'**
+   ```sql
+   SELECT title
+   FROM netflix
+   WHERE director LIKE '%Rajiv Chilaka%';
+   ```
+
+8. **TV Shows with More Than 5 Seasons**
+   ```sql
+   SELECT *
+   FROM netflix
+   WHERE type = 'TV Show' 
+   AND SPLIT_PART(duration, ' ', 1)::NUMERIC > 5;
+   ```
+
+9. **Content Count by Genre**
+   ```sql
+   SELECT UNNEST(STRING_TO_ARRAY(listed_in, ',')) AS genre, COUNT(*)
+   FROM netflix
+   GROUP BY genre
+   ORDER BY COUNT(*) DESC;
+   ```
+
+10. **Top 5 Years with Highest Average Content Released in India**
+    ```sql
+    SELECT release_year, COUNT(*) AS avg_num
+    FROM netflix
+    WHERE country = 'India'
+    GROUP BY release_year 
+    ORDER BY avg_num DESC
+    LIMIT 5;
+    ```
+
+11. **Movies That Are Documentaries**
+    ```sql
+    SELECT DISTINCT title, genre
+    FROM (
+	    SELECT *, UNNEST(STRING_TO_ARRAY(listed_in, ',')) AS genre 
+	    FROM netflix
+    ) AS genres
+    WHERE genre = 'Documentaries';
+    ```
+
+12. **Content Without a Director**
+    ```sql
+    SELECT *
+    FROM netflix
+    WHERE director IS NULL;
+    ```
+
+13. **Movies with Salman Khan in the Last 10 Years**
+    ```sql
+    SELECT *
+    FROM netflix
+    WHERE casts ILIKE '%Salman Khan%'
+    AND CAST(release_year AS INTEGER) > EXTRACT(YEAR FROM CURRENT_DATE) - 10;
+    ```
+
+14. **Top 10 Actors in Indian Movies**
+    ```sql
+    SELECT UNNEST(STRING_TO_ARRAY(casts, ',')) AS actors, COUNT(*) AS total_content
+    FROM netflix
+    WHERE country = 'India'
+    GROUP BY actors
+    ORDER BY total_content DESC
+    LIMIT 10;
+    ```
+
+15. **Categorize Content by Keywords**
+    ```sql
+    WITH cte_content AS (
+	    SELECT *,
+	           CASE 
+	               WHEN description ILIKE '%kill%' OR description ILIKE '%violence%' THEN 'Bad_content'
+	               ELSE 'Good_content' 
+	           END AS category
+	    FROM netflix
+    ) 
+    SELECT category, COUNT(*) AS total_items
+    FROM cte_content
+    GROUP BY category;
+    ```
+
+## Learning Outcomes
+By completing this project, the following skills and insights were developed:
+- **SQL Proficiency**: Gained advanced SQL skills, including the use of `WITH`, `CASE`, `RANK()`, and `DENSE_RANK()`.
+- **Data Analysis**: Learned how to analyze and extract meaningful insights from structured data.
+- **Problem-Solving**: Solved real-world business problems by applying logical thinking to structured queries.
+- **Data Cleaning**: Understood the importance of handling missing or inconsistent data (e.g., content without directors).
+
+## Conclusion
+This project demonstrates how SQL can be effectively used to analyze a dataset, uncover insights, and address business challenges. By exploring Netflix's content data, we highlighted trends in content type, genre, ratings, and more. This approach can be extended to other datasets to make informed, data-driven decisions in various industries.
+
+
+
+
+
+
 
