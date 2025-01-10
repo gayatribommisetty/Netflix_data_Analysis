@@ -1,5 +1,6 @@
 # Netflix Content Analysis Project
-![netflix-1](https://github.com/user-attachments/assets/a76935fc-721c-4d2b-986a-862effe594b7)
+![netflix](https://github.com/user-attachments/assets/75a1ae59-ede7-42a4-a2eb-c281d63f530e)
+
 
 ## Overview
 The **Netflix Content Analysis Project** provides insights into Netflix's content catalog by utilizing SQL queries. The project demonstrates how to create a structured database, analyze the dataset, and address various business problems related to Netflix content. This repository includes the SQL scripts used to create, manage, and query the `netflix` table.
